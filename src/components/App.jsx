@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import Notiflix from 'notiflix';
 import { getImages } from './services/Api';
 import { Searchbar } from './Searchbar/Searchbar';
 import { ImageGallery } from './ImageGallery/ImageGallery';
@@ -6,95 +7,69 @@ import { Button } from './Button/Button';
 import { Loader } from './Loader/Loader';
 import { ModalWindow } from './Modal/Modal';
 import { AppContainer } from './Styled';
-export class App extends React.Component {
-  state = {
-    images: [],
-    query: '',
-    page: 1,
-    error: '',
-    isLoading: false,
-    isOpenModal: false,
-    modalData: null,
-  };
 
-  async componentDidUpdate(_, prevState) {
-    if (this.state.query !== prevState.query) {
-      this.setState({
-        page: 1,
-        images: [],
-      });
-      await this.fetchImages(this.state.query, 1);
+export const App = () => {
+  const [images, setImages] = useState([]);
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isOpenModal, setIsOpenModal] = useState(false);
+  const [modalData, setModalData] = useState(null);
+
+  useEffect(() => {
+    if (!query) return;
+    setPage(1);
+    setImages([]);
+    fetchImages(query, 1);
+    // eslint-disable-next-line
+  }, [query]);
+
+  useEffect(() => {
+    if (page !== 1) {
+      fetchImages(query, page);
     }
-    if (
-      this.state.page !== prevState.page &&
-      this.state.query === prevState.query &&
-      this.state.page !== 1
-    ) {
-      await this.fetchImages(this.state.query, this.state.page);
-    }
-  }
+    // eslint-disable-next-line
+  }, [page]);
 
-  setQuery = query => {
-    this.setState({
-      query,
+  const addPage = () => {
+    setPage(prevState => {
+      return prevState + 1;
     });
+    // this.setState();
   };
 
-  addPage = () => {
-    this.setState(prevState => {
-      return {
-        page: prevState.page + 1,
-      };
-    });
+  const toggleModal = data => {
+    setIsOpenModal(prevState => !prevState);
+    setModalData(data);
   };
-
-  toggleModal = data => {
-    this.setState(prevState => {
-      return {
-        isOpenModal: !prevState.isOpenModal,
-        modalData: data,
-      };
-    });
-  };
-
-  async fetchImages(query, page) {
-    this.setState({
-      isLoading: true,
-    });
+  const fetchImages = async (query, page) => {
+    setIsLoading(true);
     try {
       const data = await getImages(query, page);
-      this.setState(prevState => {
-        return {
-          images: [...prevState.images, ...data.hits],
-          isLoading: false,
-        };
-      });
-    } catch (error) {
-      this.setState({ error: error.message });
+      if (data.hits.length === 0) {
+        Notiflix.Notify.info('Sorry, we have not found anything !');
+      }
+      setImages(prevState => [...prevState, ...data.hits]);
+      setIsLoading(false);
+    } catch (err) {
+      setError(err.message);
+      Notiflix.Notify.failure(error);
     }
-  }
-
-  render() {
-    return (
-      <AppContainer>
-        <Searchbar setQuery={this.setQuery}></Searchbar>
-        {this.state.images.length > 0 && (
-          <>
-            <ImageGallery
-              images={this.state.images}
-              toggleModal={this.toggleModal}
-            />
-            <Button addPage={this.addPage}>Load more</Button>
-          </>
-        )}
-        {this.state.isLoading === true && <Loader />}
-        {this.state.isOpenModal && (
-          <ModalWindow
-            toggleModal={this.toggleModal}
-            modalData={this.state.modalData}
-          />
-        )}
-      </AppContainer>
-    );
-  }
-}
+  };
+  return (
+    <AppContainer>
+      <Searchbar addQuery={setQuery}></Searchbar>
+      {images.length > 0 && (
+        <>
+          <ImageGallery images={images} toggleModal={toggleModal} />
+          <Button addPage={addPage}>Load more</Button>
+        </>
+      )}
+      {isLoading === true && <Loader />}
+      {isOpenModal && (
+        <ModalWindow toggleModal={toggleModal} modalData={modalData} />
+      )}
+    </AppContainer>
+  );
+};

@@ -1,36 +1,40 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import { Overlay, Modal } from './Styled';
 import { Loader } from 'components/Loader/Loader';
 
-export class ModalWindow extends Component {
-  state = {
-    isLoading: true,
+export const ModalWindow = ({ toggleModal, modalData }) => {
+  const [isLoading, setIsLoading] = useState(true);
+  const handleLoading = () => {
+    setIsLoading(false);
   };
 
-  componentDidMount() {
-    window.addEventListener('keydown', this.handleClose);
-  }
-  componentWillUnmount() {
-    window.removeEventListener('keydown', this.handleClose);
-  }
-  handleLoading = () => {
-    this.setState({ isLoading: false });
-  };
-
-  handleClose = e => {
-    if (e.target === e.currentTarget || e.code === 'Escape') {
-      this.props.toggleModal();
+  const handleClose = e => {
+    if (e.target === e.currentTarget) {
+      toggleModal();
     }
   };
-  render() {
-    const { largeImageURL, tags } = this.props.modalData;
-    return (
-      <Overlay className="overlay" onClick={this.handleClose}>
-        <Modal className="modal">
-          {this.state.isLoading === true && <Loader />}
-          <img src={largeImageURL} alt={tags} onLoad={this.handleLoading} />
-        </Modal>
-      </Overlay>
-    );
-  }
-}
+
+  const { largeImageURL, tags } = modalData;
+
+  useEffect(() => {
+    const handleClose = e => {
+      if (e.code === 'Escape') {
+        toggleModal();
+      }
+    };
+    window.addEventListener('keydown', handleClose);
+
+    return () => {
+      window.removeEventListener('keydown', handleClose);
+    };
+  }, [toggleModal]);
+
+  return (
+    <Overlay className="overlay" onClick={handleClose}>
+      <Modal className="modal">
+        {isLoading === true && <Loader />}
+        <img src={largeImageURL} alt={tags} onLoad={handleLoading} />
+      </Modal>
+    </Overlay>
+  );
+};
